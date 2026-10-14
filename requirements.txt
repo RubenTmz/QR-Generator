@@ -1,0 +1,2 @@
+qrcode[pil]>=7.4,<9
+streamlit>=1.37,<2
