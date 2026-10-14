@@ -2,9 +2,10 @@
 
 Generador gratuito y de código abierto de **QR estáticos**, con interfaz web en Streamlit y salida **PNG de alta resolución** o **SVG vectorial**. Diseñado para añadir más tipos en futuras versiones.
 
-## Funciones v0.1.0
+## Funciones v0.2.0
 
-- **vCard 3.0**: nombre, teléfono, correo, empresa, puesto y página web. El dispositivo normalmente solicita confirmar antes de guardar el contacto.
+- **Contacto básico (vCard 3.0)**: solo nombre completo y celular, sin puesto ni empresa.
+- **Contacto completo (vCard 3.0)**: nombre, celular, teléfono fijo, correo electrónico, empresa, puesto y sitio web. Se admite celular, fijo o ambos. Los campos vacíos no se incluyen.
 - **URL**: código QR que abre sitios web.
 - **Texto**: contenido libre.
 - **PNG**: resoluciones de 1,024 a 10,000 píxeles, con metadatos 300 DPI.
@@ -36,9 +37,21 @@ Entra a `http://localhost:8501` o a la dirección que indique Streamlit.
 from pathlib import Path
 from qrstudio import contact_vcard, generate_png, generate_svg
 
-qr = contact_vcard('Ana García', '+52 81 1234 5678', company='Mi empresa')
-Path('contacto.png').write_bytes(generate_png(qr, pixels=4000))
-Path('contacto.svg').write_bytes(generate_svg(qr))
+# Solo nombre y celular
+basic = contact_vcard('Ana García', '+52 81 1234 5678')
+Path('contacto_basico.png').write_bytes(generate_png(basic, pixels=4000))
+
+# Contacto completo: además de celular, puede llevar teléfono fijo y más datos
+full = contact_vcard(
+    name='Ana García',
+    phone='+52 81 1234 5678',
+    work_phone='+52 81 8765 4321',
+    email='ana@example.com',
+    company='Mi empresa',
+    title='Gerente',
+    website='https://example.com',
+)
+Path('contacto_completo.svg').write_bytes(generate_svg(full))
 ```
 
 ## Pruebas

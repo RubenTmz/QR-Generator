@@ -15,25 +15,49 @@ def _vcard_escape(value: str) -> str:
     )
 
 
-def contact_vcard(name: str, phone: str, email: str = "", company: str = "", title: str = "", website: str = "") -> str:
-    """Devuelve una vCard 3.0 para importar a contactos Android/iOS.
+def contact_vcard(
+    name: str,
+    phone: str = "",
+    email: str = "",
+    company: str = "",
+    title: str = "",
+    website: str = "",
+    work_phone: str = "",
+) -> str:
+    """Construye una vCard 3.0 con celular y/o teléfono fijo.
 
-    La app de contactos del teléfono puede pedir confirmación antes de guardar.
+    Compatibilidad: `phone` sigue siendo el celular. Los otros datos son
+    opcionales y solo se incluyen cuando se proporcionan.
     """
-    name, phone = name.strip(), phone.strip()
-    if not name or not phone:
-        raise ValueError("Nombre y teléfono son obligatorios.")
-    if not any(ch.isdigit() for ch in phone):
-        raise ValueError("El teléfono debe incluir números.")
+    name = name.strip()
+    phone = phone.strip()
+    work_phone = work_phone.strip()
+    if not name:
+        raise ValueError("El nombre es obligatorio.")
+    if not (phone or work_phone):
+        raise ValueError("Ingresa al menos un teléfono: celular o fijo.")
+    if any(number and not any(c.isdigit() for c in number) for number in (phone, work_phone)):
+        raise ValueError("Los teléfonos deben contener dígitos.")
 
-    # No inventamos la separación de apellidos: FN conserva el nombre completo.
-    lines = ["BEGIN:VCARD", "VERSION:3.0", "N:;;;;", f"FN:{_vcard_escape(name)}", f"TEL;TYPE=CELL:{_vcard_escape(phone)}"]
-    optional = (("EMAIL;TYPE=INTERNET", email), ("ORG", company), ("TITLE", title), ("URL", website))
+    lines = ["BEGIN:VCARD", "VERSION:3.0", "N:;;;;", f"FN:{_vcard_escape(name)}"]
+    if phone:
+        lines.append(f"TEL;TYPE=CELL:{_vcard_escape(phone)}")
+    if work_phone:
+        lines.append(f"TEL;TYPE=WORK,VOICE:{_vcard_escape(work_phone)}")
+
+    optional = (
+        ("EMAIL;TYPE=INTERNET", email),
+        ("ORG", company),
+        ("TITLE", title),
+        ("URL", website),
+    )
     for key, value in optional:
         if value.strip():
             lines.append(f"{key}:{_vcard_escape(value.strip())}")
     lines.append("END:VCARD")
-    return "\r\n".join(lines) + "\r\n"
+    return "
+".join(lines) + "
+"
 
 
 def website_url(url: str) -> str:

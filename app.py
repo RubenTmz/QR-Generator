@@ -12,15 +12,37 @@ qr_type = st.selectbox("Tipo de QR", ["Contacto (vCard)", "Sitio web", "Texto"])
 payload = None
 
 if qr_type == "Contacto (vCard)":
+    contact_mode = st.radio("Tipo de contacto", ["Básico", "Completo"], horizontal=True)
     name = st.text_input("Nombre completo *", placeholder="Ej. Ana García")
-    phone = st.text_input("Teléfono *", placeholder="Ej. +52 81 1234 5678")
-    with st.expander("Información adicional"):
+    phone = st.text_input(
+        "Celular *" if contact_mode == "Básico" else "Celular",
+        placeholder="Ej. +52 81 1234 5678",
+    )
+
+    work_phone = email = company = title = website = ""
+    if contact_mode == "Completo":
+        st.caption("Puedes registrar celular, teléfono fijo o ambos. Los demás campos son opcionales.")
+        work_phone = st.text_input("Teléfono fijo", placeholder="Ej. +52 81 2345 6789")
         email = st.text_input("Correo electrónico")
         company = st.text_input("Empresa")
         title = st.text_input("Puesto")
-        website = st.text_input("Sitio web")
-    if name.strip() and phone.strip():
-        payload = contact_vcard(name, phone, email, company, title, website)
+        website = st.text_input("Sitio web", placeholder="https://ejemplo.com")
+    else:
+        st.caption("El QR básico incluye únicamente nombre y celular, sin puesto ni empresa.")
+
+    if name.strip() and (phone.strip() or work_phone.strip()):
+        try:
+            payload = contact_vcard(
+                name=name,
+                phone=phone,
+                work_phone=work_phone,
+                email=email,
+                company=company,
+                title=title,
+                website=website,
+            )
+        except ValueError as exc:
+            st.warning(str(exc))
 elif qr_type == "Sitio web":
     url = st.text_input("Enlace *", placeholder="https://ejemplo.com")
     if url.strip():
