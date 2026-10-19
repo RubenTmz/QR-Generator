@@ -1,6 +1,7 @@
 """Render de QR PNG y SVG, sin red, cuentas ni servicios externos."""
 
 from io import BytesIO
+from xml.etree import ElementTree as ET
 
 import qrcode
 from PIL import Image, ImageColor
@@ -30,6 +31,23 @@ def _colors(foreground: str, background: str) -> tuple[tuple[int, int, int], tup
     return front, back
 
 
+def _luminance(rgb: tuple[int, int, int]) -> float:
+    def linear(channel: int) -> float:
+        value = channel / 255
+        return value / 12.92 if value <= 0.04045 else ((value + 0.055) / 1.055) ** 2.4
+
+    r, g, b = (linear(channel) for channel in rgb)
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b
+
+
+def color_contrast(foreground: str, background: str) -> tuple[float, bool]:
+    """Devuelve contraste (WCAG) y si los módulos son más oscuros que el fondo."""
+    fg, bg = _colors(foreground, background)
+    fg_lightness, bg_lightness = _luminance(fg), _luminance(bg)
+    ratio = (max(fg_lightness, bg_lightness) + 0.05) / (min(fg_lightness, bg_lightness) + 0.05)
+    return ratio, fg_lightness < bg_lightness
+
+
 def generate_png(payload: str, pixels: int = 4000, foreground: str = "#000000", background: str = "#FFFFFF", error_correction: str = "M") -> bytes:
     """Genera PNG cuadrado con borde blanco suficiente y resolución exacta."""
     if not 256 <= pixels <= 10000:
@@ -43,8 +61,19 @@ def generate_png(payload: str, pixels: int = 4000, foreground: str = "#000000", 
     return out.getvalue()
 
 
-def generate_svg(payload: str, error_correction: str = "M") -> bytes:
-    """Genera SVG escalable con módulos negros y fondo blanco."""
+def generate_svg(payload: str, error_correction: str = "M", foreground: str = "#000000", background: str = "#FFFFFF") -> bytes:
+    """Genera un SVG vectorial con módulos y fondo del color solicitado."""
+    fg, bg = _colors(foreground, background)
     qr = _make_qr(payload, error_correction)
     svg = qr.make_image(image_factory=SvgPathImage)
-    return svg.to_string(encoding="utf-8")
+    root = ET.fromstring(svg.to_string(encoding="utf-8"))
+    namespace = "{http://www.w3.org/2000/svg}"
+    path = root.find(f"{namespace}path")
+    if path is None:
+        raise RuntimeError("No se encontraron los módulos QR en el SVG.")
+    path.set("fill", "#{:02X}{:02X}{:02X}".format(*fg))
+    root.insert(0, ET.Element(f"{namespace}rect", {
+        "x": "0", "y": "0", "width": "100%", "height": "100%",
+        "fill": "#{:02X}{:02X}{:02X}".format(*bg),
+    }))
+    return ET.tostring(root, encoding="utf-8", xml_declaration=True)
