@@ -3,6 +3,7 @@
 import streamlit as st
 
 from qrstudio import contact_vcard, generate_png, generate_svg, plain_text, website_url
+from qrstudio.core import color_contrast
 
 st.set_page_config(page_title="QR Studio", page_icon="🔳", layout="centered")
 st.title("🔳 QR Studio")
@@ -61,11 +62,40 @@ with col1:
 with col2:
     ecc = st.selectbox("Corrección de errores", ["M", "Q", "H", "L"], index=0)
 
-st.caption("Para máxima compatibilidad, se utilizan módulos negros, fondo blanco y margen de seguridad.")
+st.subheader("🎨 Personalización de colores")
+palette = st.selectbox(
+    "Paleta",
+    ["Clásico (negro sobre blanco)", "Azul corporativo 2L (#234388)", "Personalizado"],
+    index=0,
+)
+if palette == "Clásico (negro sobre blanco)":
+    foreground, background = "#000000", "#FFFFFF"
+elif palette == "Azul corporativo 2L (#234388)":
+    foreground, background = "#234388", "#FFFFFF"
+else:
+    color1, color2 = st.columns(2)
+    with color1:
+        foreground = st.color_picker("Color del código", "#234388")
+    with color2:
+        background = st.color_picker("Color del fondo", "#FFFFFF")
+
+if foreground == background:
+    st.error("El código y el fondo necesitan colores diferentes.")
+    st.stop()
+
+contrast, dark_on_light = color_contrast(foreground, background)
+st.caption(f"Color del código: {foreground.upper()} · Fondo: {background.upper()} · Contraste: {contrast:.1f}:1")
+if contrast < 4.5 or not dark_on_light:
+    st.warning(
+        "Esta combinación puede dificultar el escaneo. "
+        "Se recomienda un contraste mínimo de 4.5:1, con el código más oscuro que el fondo. "
+        "Prueba el resultado con varios celulares antes de imprimir."
+    )
+st.caption("El margen de seguridad se conserva en PNG y SVG.")
 if payload:
     try:
-        png = generate_png(payload, pixels=pixels, error_correction=ecc)
-        svg = generate_svg(payload, error_correction=ecc)
+        png = generate_png(payload, pixels=pixels, foreground=foreground, background=background, error_correction=ecc)
+        svg = generate_svg(payload, error_correction=ecc, foreground=foreground, background=background)
     except (ValueError, OverflowError) as exc:
         st.error(f"No se pudo generar el QR: {exc}")
     else:
