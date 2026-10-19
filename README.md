@@ -2,14 +2,16 @@
 
 Generador gratuito y de código abierto de **QR estáticos**, con interfaz web en Streamlit y salida **PNG de alta resolución** o **SVG vectorial**. Diseñado para añadir más tipos en futuras versiones.
 
-## Funciones v0.2.0
+## Funciones v0.3.0
 
 - **Contacto básico (vCard 3.0)**: solo nombre completo y celular, sin puesto ni empresa.
 - **Contacto completo (vCard 3.0)**: nombre, celular, teléfono fijo, correo electrónico, empresa, puesto y sitio web. Se admite celular, fijo o ambos. Los campos vacíos no se incluyen.
 - **URL**: código QR que abre sitios web.
 - **Texto**: contenido libre.
 - **PNG**: resoluciones de 1,024 a 10,000 píxeles, con metadatos 300 DPI.
-- **SVG**: vector escalable para diseño e impresión.
+- **SVG**: vector escalable para diseño e impresión, con los mismos colores personalizados que el PNG.
+- **🎨 Coloreador**: negro clásico, preset azul corporativo `#234388` y dos selectores de color (módulos y fondo).
+- **Contraste**: advertencia cuando una combinación puede dificultar el escaneo; se conserva el margen blanco/de fondo de seguridad.
 - Generación local, sin marcas de agua y sin límites artificiales de uso.
 
 ## 🚀 Ejecución local
@@ -52,7 +54,15 @@ full = contact_vcard(
     website='https://example.com',
 )
 Path('contacto_completo.svg').write_bytes(generate_svg(full))
+
+# QR azul corporativo para impresión (también exporta SVG con los mismos colores)
+Path('contacto_azul.png').write_bytes(generate_png(basic, pixels=4000, foreground='#234388', background='#FFFFFF'))
+Path('contacto_azul.svg').write_bytes(generate_svg(basic, foreground='#234388', background='#FFFFFF'))
 ```
+
+## Colores desde la interfaz
+
+En la interfaz Streamlit, elige **Clásico**, **Azul corporativo 2L (#234388)** o **Personalizado**. En este último modo aparecen los selectores para el color del código y del fondo. El PNG y el SVG incorporan ambos colores. Para mejorar la lectura, utiliza módulos oscuros sobre un fondo claro y procura un contraste de al menos **4.5:1**. La interfaz avisa cuando puede haber problemas; comprueba el QR con varios teléfonos antes de imprimir.
 
 ## Pruebas
 
@@ -77,7 +87,8 @@ tests/test_qr.py               pruebas automáticas
 
 - [ ] Wi-Fi, WhatsApp y llamada telefónica
 - [ ] Correo electrónico y eventos de calendario
-- [ ] Colores y logotipos (asegurando legibilidad)
+- [x] Colores personalizables con advertencia de contraste
+- [ ] Logotipos (asegurando legibilidad)
 - [ ] Generación masiva desde CSV y Excel
 - [ ] Publicar la interfaz web para uso desde navegador
 
