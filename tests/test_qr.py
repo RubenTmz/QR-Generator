@@ -1,9 +1,11 @@
 from io import BytesIO
+from xml.etree import ElementTree
 
 import pytest
 from PIL import Image
 
 from qrstudio import contact_vcard, generate_png, generate_svg, plain_text, website_url
+from qrstudio.core import color_contrast
 
 
 def test_vcard_required_fields_and_escaping():
@@ -89,3 +91,50 @@ def test_svg_is_valid_xml():
 def test_invalid_resolution():
     with pytest.raises(ValueError):
         generate_png("Hola", pixels=20)
+
+
+def test_brand_color_png():
+    raw = generate_png("https://example.com", pixels=512, foreground="#234388")
+    with Image.open(BytesIO(raw)) as image:
+        assert image.size == (512, 512)
+        colors = {rgb for _, rgb in image.getcolors(maxcolors=3)}
+        assert (35, 67, 136) in colors
+        assert (255, 255, 255) in colors
+
+
+def test_custom_background_png():
+    raw = generate_png("Hola", pixels=512, foreground="#123456", background="#FAF6E6")
+    with Image.open(BytesIO(raw)) as image:
+        colors = {rgb for _, rgb in image.getcolors(maxcolors=3)}
+        assert (18, 52, 86) in colors
+        assert (250, 246, 230) in colors
+
+
+def test_svg_colors():
+    svg = generate_svg("contacto", foreground="#234388", background="#F8F8F8")
+    root = ElementTree.fromstring(svg)
+    ns = "{http://www.w3.org/2000/svg}"
+    assert root.find(f"{ns}rect").attrib["fill"] == "#F8F8F8"
+    assert root.find(f"{ns}path").attrib["fill"] == "#234388"
+    assert root[0].tag == f"{ns}rect"
+
+
+def test_default_svg_colors():
+    root = ElementTree.fromstring(generate_svg("Hola"))
+    ns = "{http://www.w3.org/2000/svg}"
+    assert root.find(f"{ns}rect").attrib["fill"] == "#FFFFFF"
+    assert root.find(f"{ns}path").attrib["fill"] == "#000000"
+
+
+def test_equal_colors_rejected():
+    with pytest.raises(ValueError):
+        generate_png("Hola", foreground="#000000", background="#000000")
+    with pytest.raises(ValueError):
+        generate_svg("Hola", foreground="#000000", background="#000000")
+
+
+def test_brand_contrast_and_reversed_colors():
+    ratio, dark_on_light = color_contrast("#234388", "#FFFFFF")
+    assert ratio > 9
+    assert dark_on_light is True
+    assert color_contrast("#FFFFFF", "#234388")[1] is False
